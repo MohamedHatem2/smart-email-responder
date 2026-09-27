@@ -1,0 +1,301 @@
+{
+  "name": "Smart Email Responder",
+  "nodes": [
+    {
+      "parameters": {
+        "sendTo": "={{ $json.userEmail }}",
+        "subject": "={{ $json.emailSubject }}",
+        "message": "={{ $json.emailBody }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "7e054ab9-27a7-47d3-8dce-3c6338230651",
+      "name": "Gmail - Send Replies",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        144,
+        416
+      ],
+      "webhookId": "c6e7d0a9-f012-4ff4-b301-07c5007b322b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "cPSFKYzSLcQxbrnw",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a JSON-only email analyzer. You must reply with a single valid JSON object and nothing else.\n\nAnalyze the email below and return ONLY this JSON structure:\n\n{\n  \"category\": \"sales|support|spam|personal|other\",\n  \"sentiment\": \"positive|neutral|negative\",\n  \"urgency\": \"high|medium|low\",\n  \"language\": \"ar|en|other\",\n  \"summary\": \"short summary in the SAME language as the email\"\n}\n\nSTRICT OUTPUT RULES — READ CAREFULLY:\n1. Start your response with { and end with }.\n2. Use ONLY double quotes (\") for keys and string values.\n3. No markdown, no code fences, no ```json, no backticks.\n4. No explanation, no greeting, no note before or after the JSON.\n5. No trailing commas. No comments.\n6. Every key must appear exactly once with a non-empty value.\n7. category MUST be one of: sales, support, spam, personal, other\n8. sentiment MUST be one of: positive, neutral, negative\n9. urgency MUST be one of: high, medium, low\n10. language MUST be one of: ar, en, other\n11. summary must be at most 25 words, in the same language as the email body.\n\nEXAMPLE OF A VALID RESPONSE:\n{\"category\":\"support\",\"sentiment\":\"neutral\",\"urgency\":\"medium\",\"language\":\"ar\",\"summary\":\"عميل يسأل عن تفاصيل الباقات والأسعار المتاحة.\"}\n\n--- EMAIL START ---\nFrom: {{ $json.from }}\nSubject: {{ $json.subject }}\nBody:\n{{ $json.text }}\n--- EMAIL END ---\n\nNow output ONLY the JSON object:"
+      },
+      "id": "35dac4ee-22ab-4b8f-9707-f6eb9600e121",
+      "name": "Analyze Chain1",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        -1024,
+        256
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a JSON-only reply generator. You must reply with a single valid JSON object and nothing else.\n\nYou are helping {{ $json.userName }} write replies to an email they RECEIVED. The replies are FROM {{ $json.userName }} TO the original sender.\n\nWrite from {{ $json.userName }}'s perspective using first person (\"I\", \"my\", \"me\"). Sign each reply with: {{ $json.userName }}\n\nReturn ONLY this JSON structure:\n\n{\n  \"official\": \"reply text\",\n  \"semi\": \"reply text\",\n  \"casual\": \"reply text\"\n}\n\nSTRICT OUTPUT RULES — READ CAREFULLY:\n1. Start your response with { and end with }.\n2. Use ONLY double quotes (\") for keys and string values.\n3. No markdown, no code fences, no ```json, no backticks.\n4. No explanation, no greeting, no note before or after the JSON.\n5. No trailing commas. No comments.\n6. Escape any internal double quotes as \\\" and newlines as \\n.\n7. Each reply must be 40–120 words.\n8. Do NOT include a subject line.\n9. No emojis in \"official\" and \"semi\". At most one in \"casual\".\n10. Match the language of the original email exactly (Arabic → Arabic, English → English).\n11. Be genuine and respectful. Never sarcastic, mocking, or dismissive.\n12. If the email is sensitive (job rejection, complaint, bad news), be empathetic and graceful.\n13. Do NOT repeat the original email. Do NOT invent facts or promises.\n\nTONE GUIDELINES:\n- official: formal, polished, corporate-appropriate, full greeting and closing.\n- semi: polite and warm but still professional, slightly relaxed.\n- casual: friendly, human, conversational, still respectful.\n\nEXAMPLE OF A VALID RESPONSE:\n{\"official\":\"Dear Hiring Team, Thank you for taking the time to review my application. I appreciate the update and will keep an eye on future openings. Best regards, Mohamed\",\"semi\":\"Hi team, thanks a lot for getting back to me. I understand the decision and appreciate the transparency. I'll check your careers page for other roles. Best, Mohamed\",\"casual\":\"Hey team, thanks for the update — appreciate you taking the time. Sorry it didn't work out this round, but I'll keep watching the careers page. Cheers, Mohamed\"}\n\n--- ORIGINAL EMAIL (received by {{ $json.userName }}) ---\nFrom: {{ $json.from }}\nSubject: {{ $json.subject }}\nBody:\n{{ $json.text }}\n\n--- ANALYSIS ---\nCategory: {{ $json.analysis.category }}\nSentiment: {{ $json.analysis.sentiment }}\nUrgency: {{ $json.analysis.urgency }}\nLanguage: {{ $json.analysis.language }}\n\nNow output ONLY the JSON object:"
+      },
+      "id": "bf997e2f-d452-4a95-a50f-1172a97f4c0d",
+      "name": "Replies Chain1",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        -432,
+        256
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Parse Analysis').first().json;\nconst raw = $input.first().json;\n\nlet content =\n  (typeof raw.text === 'string' && raw.text) ||\n  (raw.message && typeof raw.message.content === 'string' && raw.message.content) ||\n  (raw.response && typeof raw.response === 'string' && raw.response) ||\n  '';\n\nif (!content && typeof raw === 'object') {\n  content = JSON.stringify(raw);\n}\n\ncontent = String(content)\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```\\s*$/i, '')\n  .trim();\n\nconst firstBrace = content.indexOf('{');\nconst lastBrace = content.lastIndexOf('}');\nif (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {\n  content = content.slice(firstBrace, lastBrace + 1);\n}\n\nlet replies;\ntry {\n  replies = JSON.parse(content);\n} catch (e) {\n  replies = { official: content, semi: content, casual: content };\n}\n\nconst official = (replies.official || '—').trim();\nconst semi     = (replies.semi     || '—').trim();\nconst casual   = (replies.casual   || '—').trim();\n\n/* ---------- Language & direction ---------- */\nconst isArabic = (data.analysis && data.analysis.language === 'ar') || data.lang === 'ar';\nconst dir = isArabic ? 'rtl' : 'ltr';\nconst align = isArabic ? 'right' : 'left';\nconst side = isArabic ? 'right' : 'left';\n\n/* ---------- Helpers ---------- */\nconst esc = (s) => String(s)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;');\n\nconst nl2br = (s) => esc(s).replace(/\\n/g, '<br/>');\n\n/* ---------- Labels ---------- */\nconst L = isArabic ? {\n  header: '📬 تحليل الإيميل',\n  from: 'من:', subject: 'الموضوع:', category: 'التصنيف:',\n  urgency: 'الأولوية:', sentiment: 'المشاعر:', summary: 'ملخص سريع',\n  official: '🏛 الرد الرسمي', semi: '✍️ الرد شبه الرسمي', casual: '💬 الرد العادي',\n  footer: 'تم إنشاء هذه الردود تلقائيًا بواسطة Smart Email Responder.'\n} : {\n  header: '📬 Email Analysis',\n  from: 'From:', subject: 'Subject:', category: 'Category:',\n  urgency: 'Urgency:', sentiment: 'Sentiment:', summary: 'Quick summary',\n  official: '🏛 Official Reply', semi: '✍️ Semi-formal Reply', casual: '💬 Casual Reply',\n  footer: 'These replies were generated automatically by Smart Email Responder.'\n};\n\n/* ---------- Email subject ---------- */\nconst emailSubject = 'Re: ' + (data.subject || '—') +\n  (isArabic ? ' — ردود مقترحة' : ' — Suggested Replies');\n\n/* ---------- Email HTML (responsive) ---------- */\nconst emailBody = `<!DOCTYPE html>\n<html dir=\"${dir}\" lang=\"${isArabic ? 'ar' : 'en'}\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">\n<title>${esc(emailSubject)}</title>\n<style>\n  /* ====== Reset (email-safe) ====== */\n  body, table, td, p, div, h1, h2, h3, span, a {\n    margin: 0; padding: 0; border: 0; outline: 0;\n    font-size: 100%; vertical-align: baseline; background: transparent;\n  }\n  body { width: 100% !important; height: 100% !important; }\n  table { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }\n  img { border: 0; line-height: 100%; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }\n\n  /* ====== Base ====== */\n  body {\n    background-color: #f6f5f1;\n    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif;\n    line-height: 1.7;\n    color: #1b1d23;\n    -webkit-text-size-adjust: 100%;\n    -ms-text-size-adjust: 100%;\n  }\n  .email-wrapper {\n    width: 100%;\n    background-color: #f6f5f1;\n    padding: 24px 12px;\n    direction: ${dir};\n  }\n  .email-container {\n    width: 600px;\n    max-width: 600px;\n    background-color: #ffffff;\n    border: 1px solid #e4e6eb;\n    border-radius: 14px;\n    overflow: hidden;\n  }\n  .px {\n    padding-left: 28px;\n    padding-right: 28px;\n  }\n  .title-lg {\n    font-size: 20px;\n    font-weight: 700;\n    color: #2f6b5f;\n    line-height: 1.4;\n  }\n  .body-text {\n    font-size: 14px;\n    line-height: 1.8;\n    color: #1b1d23;\n    word-break: break-word;\n    overflow-wrap: anywhere;\n    -webkit-hyphens: auto;\n    hyphens: auto;\n  }\n  .info-label {\n    width: 120px;\n    color: #8a8f9a;\n    font-size: 13px;\n    vertical-align: top;\n  }\n  .info-value {\n    color: #1b1d23;\n    font-size: 13.5px;\n    vertical-align: top;\n    word-break: break-word;\n  }\n  .summary-box {\n    background-color: #fbfbfa;\n    border: 1px solid #e4e6eb;\n    border-radius: 12px;\n    padding: 14px 16px;\n  }\n  .reply-box {\n    border-radius: 12px;\n    padding: 14px 16px;\n  }\n  .reply-heading {\n    font-size: 15px;\n    font-weight: 700;\n    margin-bottom: 8px;\n  }\n  .reply-official-box  { background-color: #eef4fb; border-${side}: 3px solid #264b7c; }\n  .reply-semi-box      { background-color: #fdf3e7; border-${side}: 3px solid #8a5a2b; }\n  .reply-casual-box    { background-color: #f0edfa; border-${side}: 3px solid #5a4a8a; }\n  .reply-official-head { color: #264b7c; }\n  .reply-semi-head     { color: #8a5a2b; }\n  .reply-casual-head   { color: #5a4a8a; }\n  .footer-text {\n    font-size: 11.5px;\n    color: #8a8f9a;\n    text-align: center;\n  }\n  .divider-space { height: 20px; line-height: 20px; font-size: 0; }\n\n  /* ====== Mobile ====== */\n  @media only screen and (max-width: 620px) {\n    .email-wrapper { padding: 14px 8px !important; }\n    .email-container {\n      width: 100% !important;\n      max-width: 100% !important;\n      border-radius: 12px !important;\n    }\n    .px {\n      padding-left: 16px !important;\n      padding-right: 16px !important;\n    }\n    .title-lg { font-size: 17px !important; }\n    .body-text { font-size: 13.5px !important; line-height: 1.75 !important; }\n    .info-label { width: 80px !important; font-size: 12px !important; }\n    .info-value { font-size: 12.5px !important; }\n    .summary-box { padding: 12px 13px !important; }\n    .reply-box { padding: 12px 13px !important; }\n    .reply-heading { font-size: 14px !important; }\n    .footer-text { font-size: 11px !important; }\n    .divider-space { height: 14px !important; line-height: 14px !important; }\n  }\n</style>\n</head>\n<body>\n<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background-color:#f6f5f1;\">\n  <tr>\n    <td class=\"email-wrapper\" align=\"center\" valign=\"top\">\n\n      <table role=\"presentation\" class=\"email-container\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" align=\"center\" style=\"background-color:#ffffff;border:1px solid #e4e6eb;border-radius:14px;\">\n\n        <!-- ===== Header ===== -->\n        <tr>\n          <td class=\"px\" style=\"padding-top:26px;padding-bottom:14px;text-align:${align};\">\n            <h2 class=\"title-lg\" style=\"margin:0;\">${L.header}</h2>\n          </td>\n        </tr>\n\n        <!-- ===== Info table ===== -->\n        <tr>\n          <td class=\"px\" style=\"padding-bottom:20px;text-align:${align};\">\n            <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\n              <tr>\n                <td class=\"info-label\" style=\"padding:5px 0;text-align:${align};\">${L.from}</td>\n                <td class=\"info-value\" style=\"padding:5px 0;text-align:${align};\"><b>${esc(data.from)}</b></td>\n              </tr>\n              <tr>\n                <td class=\"info-label\" style=\"padding:5px 0;text-align:${align};\">${L.subject}</td>\n                <td class=\"info-value\" style=\"padding:5px 0;text-align:${align};\">${esc(data.subject)}</td>\n              </tr>\n              <tr>\n                <td class=\"info-label\" style=\"padding:5px 0;text-align:${align};\">${L.category}</td>\n                <td class=\"info-value\" style=\"padding:5px 0;text-align:${align};\">${esc(data.analysis.category)}</td>\n              </tr>\n              <tr>\n                <td class=\"info-label\" style=\"padding:5px 0;text-align:${align};\">${L.urgency}</td>\n                <td class=\"info-value\" style=\"padding:5px 0;text-align:${align};\">${esc(data.analysis.urgency)}</td>\n              </tr>\n              <tr>\n                <td class=\"info-label\" style=\"padding:5px 0;text-align:${align};\">${L.sentiment}</td>\n                <td class=\"info-value\" style=\"padding:5px 0;text-align:${align};\">${esc(data.analysis.sentiment)}</td>\n              </tr>\n            </table>\n          </td>\n        </tr>\n\n        <!-- ===== Summary ===== -->\n        <tr>\n          <td class=\"px\" style=\"padding-bottom:22px;\">\n            <div class=\"summary-box\" style=\"text-align:${align};\">\n              <b style=\"display:block;margin-bottom:6px;color:#1b1d23;font-size:13.5px;\">${L.summary}</b>\n              <span class=\"body-text\" style=\"color:#4b4f5a;display:block;\">${esc(data.analysis.summary)}</span>\n            </div>\n          </td>\n        </tr>\n\n        <!-- ===== Official Reply ===== -->\n        <tr>\n          <td class=\"px\" style=\"padding-bottom:8px;text-align:${align};\">\n            <h3 class=\"reply-heading reply-official-head\" style=\"margin:0;\">${L.official}</h3>\n          </td>\n        </tr>\n        <tr>\n          <td class=\"px\" style=\"padding-bottom:22px;\">\n            <div class=\"reply-box reply-official-box body-text\" style=\"text-align:${align};\">\n              ${nl2br(official)}\n            </div>\n          </td>\n        </tr>\n\n        <!-- ===== Semi-formal Reply ===== -->\n        <tr>\n          <td class=\"px\" style=\"padding-bottom:8px;text-align:${align};\">\n            <h3 class=\"reply-heading reply-semi-head\" style=\"margin:0;\">${L.semi}</h3>\n          </td>\n        </tr>\n        <tr>\n          <td class=\"px\" style=\"padding-bottom:22px;\">\n            <div class=\"reply-box reply-semi-box body-text\" style=\"text-align:${align};\">\n              ${nl2br(semi)}\n            </div>\n          </td>\n        </tr>\n\n        <!-- ===== Casual Reply ===== -->\n        <tr>\n          <td class=\"px\" style=\"padding-bottom:8px;text-align:${align};\">\n            <h3 class=\"reply-heading reply-casual-head\" style=\"margin:0;\">${L.casual}</h3>\n          </td>\n        </tr>\n        <tr>\n          <td class=\"px\" style=\"padding-bottom:24px;\">\n            <div class=\"reply-box reply-casual-box body-text\" style=\"text-align:${align};\">\n              ${nl2br(casual)}\n            </div>\n          </td>\n        </tr>\n\n        <!-- ===== Footer ===== -->\n        <tr>\n          <td class=\"px\" style=\"padding-bottom:24px;\">\n            <p class=\"footer-text\">${L.footer}</p>\n          </td>\n        </tr>\n\n      </table>\n\n    </td>\n  </tr>\n</table>\n</body>\n</html>`.trim();\n\nreturn [{\n  json: {\n    success: true,\n    userName: data.userName,\n    userEmail: data.userEmail,\n    from: data.from,\n    subject: data.subject,\n    analysis: data.analysis,\n    replies: { official, semi, casual },\n    emailSubject,\n    emailBody,\n    generatedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "3cbce04a-d50f-4591-ba7c-f78d44e18091",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -96,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prep = $('Prepare Email').first().json;\nconst raw = $input.first().json;\n\nlet content =\n  (typeof raw.text === 'string' && raw.text) ||\n  (raw.message && typeof raw.message.content === 'string' && raw.message.content) ||\n  (raw.response && typeof raw.response === 'string' && raw.response) ||\n  '';\n\nif (!content && typeof raw === 'object') {\n  content = JSON.stringify(raw);\n}\n\ncontent = String(content)\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```\\s*$/i, '')\n  .trim();\n\nconst firstBrace = content.indexOf('{');\nconst lastBrace = content.lastIndexOf('}');\nif (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {\n  content = content.slice(firstBrace, lastBrace + 1);\n}\n\nlet analysis;\ntry {\n  analysis = JSON.parse(content);\n} catch (e) {\n  analysis = {\n    category: 'other',\n    sentiment: 'neutral',\n    urgency: 'medium',\n    language: prep.lang === 'ar' ? 'ar' : 'en',\n    summary: 'Could not parse analysis output.'\n  };\n}\n\nreturn [{ json: { ...prep, analysis } }];"
+      },
+      "id": "1e9b3a19-926b-4575-98bc-884b16835722",
+      "name": "Parse Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -688,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst from = (body.from || '').trim();\nconst subject = (body.subject || '').trim();\nconst text = (body.text || '').trim();\nconst userName = (body.userName || '').trim();\nconst userEmail = (body.userEmail || '').trim();\nconst lang = body.lang === 'en' ? 'en' : 'ar';\n\nif (!text || text.length < 3) {\n  throw new Error('Email body is required (min 3 chars).');\n}\nif (!userName) {\n  throw new Error('userName is required.');\n}\nif (!userEmail || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(userEmail)) {\n  throw new Error('A valid userEmail is required.');\n}\n\nreturn [{ json: { from, subject, text, userName, userEmail, lang } }];"
+      },
+      "id": "961023f5-9061-488f-aa9c-d8e9d5c52412",
+      "name": "Prepare Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1264,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "smart-email-responder",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "628e9254-3d95-4296-8d15-54816cb6b15f",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1536,
+        256
+      ],
+      "webhookId": "smart-email-responder"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": {{ $json.success }},\n  \"userName\": {{ JSON.stringify($json.userName) }},\n  \"userEmail\": {{ JSON.stringify($json.userEmail) }},\n  \"from\": {{ JSON.stringify($json.from) }},\n  \"subject\": {{ JSON.stringify($json.subject) }},\n  \"analysis\": {{ JSON.stringify($json.analysis) }},\n  \"replies\": {{ JSON.stringify($json.replies) }},\n  \"generatedAt\": {{ JSON.stringify($json.generatedAt) }}\n}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "id": "6aea6a19-5bc6-4248-834b-694754670662",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        160,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "model": "cohere/north-mini-code:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -1008,
+        496
+      ],
+      "id": "5dc0006d-64da-476b-9fac-22b2e9bba20a",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "wEdrwb0Qwi6fz1KV",
+          "name": "Email Responder"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "cohere/north-mini-code:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        464
+      ],
+      "id": "07ea569a-faca-4efc-a63e-e1cae479547a",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "wEdrwb0Qwi6fz1KV",
+          "name": "Email Responder"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Analyze Chain1": {
+      "main": [
+        [
+          {
+            "node": "Parse Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replies Chain1": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gmail - Send Replies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Analysis": {
+      "main": [
+        [
+          {
+            "node": "Replies Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Email": {
+      "main": [
+        [
+          {
+            "node": "Analyze Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analyze Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Replies Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "7cfd575d-298b-4371-a99f-b339dfeead41",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d5abfaa60178f35c7bb78ae97b09c035844f7d7ee88e85ec67956532311dfca4"
+  },
+  "nodeGroups": [],
+  "id": "w3plgjQkXyez3b5N",
+  "tags": []
+}

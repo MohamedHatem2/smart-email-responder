@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Smart Email Responder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- Ambient background -->
+<div class="ambient" aria-hidden="true">
+  <div class="ambient-blob ambient-blob-1"></div>
+  <div class="ambient-blob ambient-blob-2"></div>
+  <div class="ambient-blob ambient-blob-3"></div>
+  <div class="ambient-noise"></div>
+</div>
+
+<!-- ============== Page Loader ============== -->
+<div class="page-loader" id="pageLoader" aria-hidden="true">
+  <div class="pl-inner">
+    <div class="pl-orbit">
+      <svg class="pl-svg pl-svg-1" viewBox="0 0 120 120">
+        <circle class="pl-track" cx="60" cy="60" r="52"/>
+        <circle class="pl-arc pl-arc-1" cx="60" cy="60" r="52"/>
+      </svg>
+      <svg class="pl-svg pl-svg-2" viewBox="0 0 120 120">
+        <circle class="pl-arc pl-arc-2" cx="60" cy="60" r="40"/>
+      </svg>
+      <div class="pl-core">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="5" width="18" height="14" rx="3"/>
+          <path d="M3 7l9 6 9-6"/>
+        </svg>
+      </div>
+    </div>
+    <p class="pl-title" id="plTitle">جاري التحضير</p>
+    <p class="pl-sub" id="plSub">ثانية واحدة…</p>
+    <div class="pl-bar"><div class="pl-bar-fill" id="plBarFill"></div></div>
+  </div>
+</div>
+
+<!-- ============== Topbar ============== -->
+<header class="topbar" id="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+  <span class="brand-mark">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="5" width="18" height="14" rx="3"/>
+      <path d="M3 7l9 6 9-6"/>
+    </svg>
+  </span>
+  <span class="brand-text" data-i18n-html="brandTitle">Smart Email <em>Responder</em></span>
+</div>
+
+    <div class="top-right">
+      <div class="step-dots" id="dots">
+        <span class="on" data-step="1"></span>
+        <span data-step="2"></span>
+        <span data-step="3"></span>
+      </div>
+
+      <button class="icon-btn" id="langBtn" type="button" aria-label="Switch language">
+        <span id="langLabel">EN</span>
+      </button>
+
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch theme">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+
+  <!-- ============== Global Alert ============== -->
+  <div class="global-alert" id="globalAlert" role="alert"></div>
+
+  <!-- ============== Step 1 ============== -->
+  <section class="screen active" id="screen-1">
+    <div class="welcome">
+      <div class="welcome-card">
+        <div class="wc-badge">
+          <span class="wc-badge-dot"></span>
+          <span data-i18n="wcBadge">مدعوم بالذكاء الاصطناعي</span>
+        </div>
+        <h1 data-i18n="welcomeTitle">أهلاً بيك</h1>
+        <p data-i18n="welcomeSub">قبل ما نبدأ، محتاجين نعرف اسمك وإيميلك عشان نبعتلك الردود عليه بعد التحليل.</p>
+
+        <div class="field">
+          <label for="userName" data-i18n="labelName">الاسم</label>
+          <input id="userName" type="text" autocomplete="name" data-i18n-placeholder="phName" placeholder="مثال: أحمد محمد" />
+        </div>
+
+        <div class="field">
+          <label for="userEmail" data-i18n="labelUserEmail">الإيميل</label>
+          <input id="userEmail" type="email" autocomplete="email" data-i18n-placeholder="phUserEmail" placeholder="you@example.com" />
+          <div class="hint" data-i18n="hintUserEmail">الإيميل اللي هيوصلك عليه الردود.</div>
+        </div>
+
+        <button class="btn btn-primary" id="startBtn" data-i18n="btnStart">
+          <span class="btn-label">يلا نبدأ</span>
+          <svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M13 5l7 7-7 7"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== Step 2 ============== -->
+  <section class="screen" id="screen-2">
+    <div class="work">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title" data-i18n="panelEmail">بيانات الإيميل</div>
+            <div class="panel-sub" data-i18n="panelEmailSub">حط الإيميل اللي وصلك وخلينا نحلله.</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="fromEmail" data-i18n="labelFrom">من (From)</label>
+          <input id="fromEmail" type="email" data-i18n-placeholder="phFrom" placeholder="client@example.com" />
+        </div>
+        <div class="field">
+          <label for="subject" data-i18n="labelSubject">الموضوع (Subject)</label>
+          <input id="subject" type="text" data-i18n-placeholder="phSubject" placeholder="استفسار عن الخدمة" />
+        </div>
+        <div class="field">
+          <label for="body" data-i18n="labelBody">نص الإيميل</label>
+          <textarea id="body" data-i18n-placeholder="phBody" placeholder="الصق نص الإيميل هنا..."></textarea>
+        </div>
+
+        <button class="btn btn-primary" id="analyzeBtn" data-i18n="btnAnalyze">
+          <span class="btn-label">تحليل وتوليد الردود</span>
+        </button>
+      </div>
+
+      <aside class="panel panel-sticky">
+        <div class="panel-title" data-i18n="panelSteps">إيه اللي هيحصل؟</div>
+        <div class="panel-sub" data-i18n="panelStepsSub">الخطوات بسيطة وواضحة.</div>
+        <div class="steps-list" data-i18n-html="stepsList">
+          1. هنحلل الإيميل ونحدد نوعه وأولويتك.<br />
+          2. هنجهزلك <b>3 ردود</b> بمستويات مختلفة:<br />
+          &nbsp;&nbsp;• رسمي &nbsp; • شبه رسمي &nbsp; • عادي<br />
+          3. هتبعتها كلها على إيميلك.
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============== Step 3 ============== -->
+  <section class="screen" id="screen-3">
+    <div class="work work-single">
+      <div class="panel">
+        <div class="results-head">
+          <div class="panel-title no-margin" data-i18n="resultTitle">النتيجة</div>
+          <div class="who">
+            <span data-i18n="greet">مرحباً</span>
+            <b id="whoName">—</b>
+          </div>
+        </div>
+
+        <div id="analysisBox"></div>
+        <div id="repliesBox"></div>
+
+        <button class="btn btn-ghost btn-back" id="backBtn" data-i18n="btnBack">تحليل إيميل تاني</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer class="foot">
+  <span data-i18n="footer">Powered by n8n &amp; OpenRouter</span>
+</footer>
+<!-- ============== Analyze Overlay ============== -->
+<div class="analyze-overlay" id="analyzeOverlay" aria-hidden="true">
+  <div class="ao-backdrop"></div>
+
+  <div class="ao-card" role="dialog" aria-modal="true" aria-live="polite">
+
+    <!-- ===== Orb ===== -->
+    <div class="ao-visual" aria-hidden="true">
+      <div class="ao-orbit ao-orbit-outer">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <circle class="ao-track" cx="50" cy="50" r="44"/>
+          <circle class="ao-arc ao-arc-brand" cx="50" cy="50" r="44"/>
+        </svg>
+      </div>
+      <div class="ao-orbit ao-orbit-inner">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <circle class="ao-arc ao-arc-gold" cx="50" cy="50" r="32"/>
+        </svg>
+      </div>
+      <div class="ao-core">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>
+          <circle cx="12" cy="12" r="3.2"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- ===== Text ===== -->
+    <h3 class="ao-title" id="aoTitle">الذكاء الاصطناعي بيشتغل…</h3>
+    <p class="ao-sub" id="aoSub">بنحلل الإيميل ونجهزلك 3 ردود</p>
+
+    <!-- ===== Steps ===== -->
+    <ul class="ao-steps" id="aoSteps">
+      <li class="ao-step" data-step="1">
+        <span class="ao-step-marker" aria-hidden="true">
+          <span class="ao-step-spinner"></span>
+          <svg class="ao-step-check" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12.5l4.5 4.5L19 7"/>
+          </svg>
+        </span>
+        <span class="ao-step-label" id="aoStep1Label">تحليل نبرة ومحتوى الإيميل</span>
+      </li>
+      <li class="ao-step" data-step="2">
+        <span class="ao-step-marker" aria-hidden="true">
+          <span class="ao-step-spinner"></span>
+          <svg class="ao-step-check" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12.5l4.5 4.5L19 7"/>
+          </svg>
+        </span>
+        <span class="ao-step-label" id="aoStep2Label">تحديد اللغة والتصنيف</span>
+      </li>
+      <li class="ao-step" data-step="3">
+        <span class="ao-step-marker" aria-hidden="true">
+          <span class="ao-step-spinner"></span>
+          <svg class="ao-step-check" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12.5l4.5 4.5L19 7"/>
+          </svg>
+        </span>
+        <span class="ao-step-label" id="aoStep3Label">توليد الردود الثلاثة</span>
+      </li>
+    </ul>
+
+    <!-- ===== Progress ===== -->
+    <div class="ao-progress">
+      <div class="ao-progress-fill" id="aoProgressFill"></div>
+    </div>
+    <p class="ao-eta" id="aoEta">بنجهز حاجة حلوة…</p>
+
+  </div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
